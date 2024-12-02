@@ -2,6 +2,10 @@ const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
 
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt"); // Supondo que você use bcrypt
+const secretKey = "seuSegredoSuperSeguro"; // Substitua por uma chave mais segura!
+
 const app = express();
 const port = 3000;
 
@@ -23,15 +27,63 @@ conn.connect(function (err) {
   }
 });
 
+//TOKEN
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // 'Bearer token'
+
+  if (!token) return res.status(401).json({ message: "Acesso negado: token não encontrado." });
+
+  jwt.verify(token, secretKey, (err, user) => {
+    if (err) return res.status(403).json({ message: "Token inválido ou expirado." });
+
+    req.user = user; // Adiciona os dados do usuário no request
+    next(); // Chama a próxima função da rota
+  });
+}
+
+
 app.get("/home", (req, res) => {
   res.json({ message: "Hello from the server!" });
 });
 
+//LOGIN
 app.post("/logar", (req, res) => {
   const { email, senha } = req.body;
-  res.status(200).json({ message: "Logado no back" });
+
+  const query = "SELECT * FROM users WHERE email = ?";
+  conn.query(query, [email], async (err, results) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Erro interno no servidor." });
+    }
+
+    if (results.length > 0) {
+      const user = results[0];
+      const isMatch = await bcrypt.compare(senha, user.password);
+
+      if (isMatch) {
+        // Gera o token JWT com informações do usuário
+        const token = jwt.sign(
+          { id: user.id, email: user.email, nome: user.nome },
+          secretKey,
+          { expiresIn: "1h" } // O token expira em 1 hora
+        );
+
+        res.status(200).json({
+          message: "Login realizado com sucesso!",
+          token: token,
+        });
+      } else {
+        res.status(401).json({ message: "Email ou senha incorretos." });
+      }
+    } else {
+      res.status(401).json({ message: "Email ou senha incorretos." });
+    }
+  });
 });
 
+//CADASTRO
 app.post("/registrar/empresa", async (req, res) => {
   const { nome, cnpj, password, email, tel } = req.body;
 
@@ -47,9 +99,14 @@ app.post("/registrar/empresa", async (req, res) => {
   });
 });
 
+//LISTAR EMPRESAS
 app.get("/users/listar", (req, res) => {
   res.status(200).json({ message: "Lista de usuários não implementada." });
 });
+
+app.get("/homeEstabelecimento", authenticateToken, (req, res) => {
+
+})
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
