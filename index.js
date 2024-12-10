@@ -3,8 +3,8 @@ const cors = require("cors");
 const mysql = require("mysql2");
 
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt"); // Supondo que você use bcrypt
-const secretKey = "seuSegredoSuperSeguro"; // Substitua por uma chave mais segura!
+const bcrypt = require("bcrypt");
+const secretKey = "seuSegredoSuperSeguro";
 
 const app = express();
 const port = 3000;
@@ -30,7 +30,7 @@ conn.connect(function (err) {
 //TOKEN
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // 'Bearer token'
+  const token = authHeader && authHeader.split(" ")[1];
 
   if (!token)
     return res
@@ -67,13 +67,13 @@ app.post("/logar", (req, res) => {
       const user = results[0];
       const isMatch = await bcrypt.compare(senha, user.password);
 
-      // console.log("<User>: ", user);
-      // console.log("isMatch: ", isMatch);
+      console.log("<User>: ", user);
+      console.log("isMatch: ", isMatch);
 
       if (isMatch) {
         // Gera o token JWT com informações do usuário
         const token = jwt.sign(
-          { id: user.id, email: user.email, nome: user.nome },
+          { id: user.id, email: user.email, nome: user.nome, cnpj: user.cnpj },
           secretKey,
           { expiresIn: "1h" } // O token expira em 1 hora
         );
@@ -119,23 +119,72 @@ app.post("/registrar/empresa", async (req, res) => {
 
 //CADASTRO DO PRODUTO
 app.post("/cadastrar/produto", (req, res) => {
-  const {nomeProduto, volumePeso, valor, tipo, cnpj} = req.body;
+  const { nomeProduto, volumePeso, valor, tipo, cnpj } = req.body;
 
-  const query = "INSERT INTO produtos (nomeProduto, volumePeso, valor, tipo, cnpj) VALUES (?, ?, ?, ?, ?)";
-  conn.query(query, [nomeProduto, volumePeso, valor, tipo, cnpj], function (err) {
-    if(err){
-      console.log(err)
-      res.status(500).json({message: "Error ao cadastrar produto."})
-    }else{
-      res.status(200).json({message: "Produto cadastrado com sucesso!"})
+  const query =
+    "INSERT INTO produtos (nomeProduto, volumePeso, valor, tipo, cnpj) VALUES (?, ?, ?, ?, ?)";
+  conn.query(
+    query,
+    [nomeProduto, volumePeso, valor, tipo, cnpj],
+    function (err) {
+      if (err) {
+        console.log(err);
+        res.status(500).json({ message: "Error ao cadastrar produto." });
+      } else {
+        res.status(200).json({ message: "Produto cadastrado com sucesso!" });
+      }
     }
-  })
+  );
+});
 
-})
+//LISTAR PRODUTOS
+
+app.get("/produstos/listar", (req, res) => {
+  const query = ` SELECT * FROM produtos`;
+  conn.query(query, (err, result) => {
+    if (err) {
+      console.log("Error ao buscar os produtos");
+    }
+    if (result === 0) {
+      return res.status(404).json({ message: "Produto não encontrado" });
+    }
+
+    const produto = result;
+    res.status(200).json(produto);
+  });
+});
+
+app.get("/produtos/listar/:cnpj", (req, res) => {
+  const produtoId = req.params.id;
+
+  const query = `SELECT * FROM produtos WHERE cnpj = ?`;
+  conn.query(query, [produtoId], (err, results) => {
+    if (err) {
+      console.log("error na busca");
+    }
+    if (results === 0) {
+      return res.status(404).json({ message: "Produto não encontrado!" });
+    }
+
+    const produto = results[0];
+
+    res.status(200).json(produto);
+  });
+});
+
+// app.get("/produtos/listar/:cnpj", (req, res) => {});
 
 //LISTAR EMPRESAS
 app.get("/users/listar", (req, res) => {
-  res.status(200).json({ message: "Lista de usuários não implementada." });
+  const query = `SELECT idusuarios, nome, email, cnpj, tel FROM users `;
+
+  conn.query(query, (err, result) => {
+    if (err) {
+      console.error("Error ao listar empresas", err);
+      return res.status(500).json({ message: "Erro ao buscar empresas" });
+    }
+    res.status(200).json({ empresas: result });
+  });
 });
 
 //LISTAR PERFIL DA EMPRESA
