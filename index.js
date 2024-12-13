@@ -138,8 +138,7 @@ app.post("/cadastrar/produto", (req, res) => {
 });
 
 //LISTAR PRODUTOS
-
-app.get("/produstos/listar", (req, res) => {
+app.get("/produtos/listar", (req, res) => {
   const query = ` SELECT * FROM produtos`;
   conn.query(query, (err, result) => {
     if (err) {
@@ -154,23 +153,72 @@ app.get("/produstos/listar", (req, res) => {
   });
 });
 
-app.get("/produtos/listar/:cnpj", (req, res) => {
+app.get("/produtos/listar/:id", (req, res) => {
   const produtoId = req.params.id;
 
-  const query = `SELECT * FROM produtos WHERE cnpj = ?`;
-  conn.query(query, [produtoId], (err, results) => {
+  const query = `SELECT * FROM produtos WHERE idprodutos = ?`;
+  conn.query(query, [produtoId], (err, result) => {
     if (err) {
-      console.log("error na busca");
-    }
-    if (results === 0) {
-      return res.status(404).json({ message: "Produto não encontrado!" });
+      console.error("Error ao localizar Produto", err);
+      return res.status(500);
     }
 
-    const produto = results[0];
+    if (result.length === 0) {
+      return res.status(404).json({ message: "Produto não encontrado." });
+    }
+
+    const produto = result[0];
 
     res.status(200).json(produto);
   });
 });
+
+//Editar Produto
+app.put("/produtos/editar/:id", (req, res) => {
+  const produtoId = req.params.id;
+  const { nomeProduto, volumePeso, valor, tipo, cnpj } = req.body;
+
+  if (!nomeProduto || !volumePeso || !valor || !tipo || !cnpj) {
+    return res
+      .status(400)
+      .json({ message: "Todos os campos são obrigatórios" });
+  }
+
+  const query = `UPDATE produtos SET nomeProduto = ?, valor = ?, volumePeso = ?, tipo = ?, cnpj = ? WHERE idprodutos = ?`;
+  conn.query(
+    query,
+    [nomeProduto, volumePeso, valor, tipo, cnpj, produtoId], //Precisa seguir a ordem da const QUERY
+    (err, result) => {
+      if (err) {
+        console.error("Erro ao editar o produto", err);
+        return res.status(500).json({ message: "Erro interno servidor." });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Produto não encontrado" });
+      }
+
+      res.status(200).json({ message: "Produto atualizado com sucesso!" });
+    }
+  );
+});
+
+// app.get("/produtos/listar/:cnpj", (req, res) => {
+//   const produtoId = req.params.id;
+
+//   const query = `SELECT * FROM produtos WHERE cnpj = ?`;
+//   conn.query(query, [produtoId], (err, results) => {
+//     if (err) {
+//       console.log("error na busca");
+//     }
+//     if (results === 0) {
+//       return res.status(404).json({ message: "Produto não encontrado!" });
+//     }
+
+//     const produto = results[0];
+
+//     res.status(200).json(produto);
+//   });
+// });
 
 // app.get("/produtos/listar/:cnpj", (req, res) => {});
 
