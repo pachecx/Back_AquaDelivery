@@ -73,7 +73,7 @@ app.post("/logar", (req, res) => {
       if (isMatch) {
         // Gera o token JWT com informações do usuário
         const token = jwt.sign(
-          { id: user.id, email: user.email, nome: user.nome, cnpj: user.cnpj },
+          { id: user.idusuarios, email: user.email, nome: user.nome, cnpj: user.cnpj },
           secretKey,
           { expiresIn: "1h" } // O token expira em 1 hora
         );
@@ -201,6 +201,23 @@ app.put("/produtos/editar/:id", (req, res) => {
     }
   );
 });
+
+//Deletar produto
+app.delete("/deletar/produto/:id", (req, res) => {
+  const produtoId = req.params.id
+  
+  const query = `DELETE FROM produtos WHERE idprodutos = ?`
+
+  conn.query(query, [produtoId], (err, result) => {
+    if(err){
+      console.error("Erro ao deletar produto", err)
+      return res.status(500).json({message: "Erro interno no servidor"})
+    }
+    if(result.affectedRows === 0){
+      return res.status(404).json({message: "Produto não encontrado"})
+    }
+  })
+})
 
 // app.get("/produtos/listar/:cnpj", (req, res) => {
 //   const produtoId = req.params.id;
