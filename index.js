@@ -7,7 +7,7 @@ const bcrypt = require("bcrypt");
 const secretKey = "seuSegredoSuperSeguro";
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -202,22 +202,26 @@ app.put("/produtos/editar/:id", (req, res) => {
   );
 });
 
-//Deletar produto
+// Deletar produto
 app.delete("/deletar/produto/:id", (req, res) => {
-  const produtoId = req.params.id
-  
-  const query = `DELETE FROM produtos WHERE idprodutos = ?`
+  const produtoId = req.params.id;
+
+  const query = `DELETE FROM produtos WHERE idprodutos = ?`;
 
   conn.query(query, [produtoId], (err, result) => {
-    if(err){
-      console.error("Erro ao deletar produto", err)
-      return res.status(500).json({message: "Erro interno no servidor"})
+    if (err) {
+      console.error("Erro ao deletar produto", err);
+      return res.status(500).json({ message: "Erro interno no servidor" });
     }
-    if(result.affectedRows === 0){
-      return res.status(404).json({message: "Produto não encontrado"})
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Produto não encontrado" });
     }
-  })
-})
+
+    //Enviando resposta de sucesso
+    res.status(200).json({ message: "Produto deletado com sucesso" });
+  });
+});
 
 // app.get("/produtos/listar/:cnpj", (req, res) => {
 //   const produtoId = req.params.id;
@@ -251,6 +255,20 @@ app.get("/users/listar", (req, res) => {
     res.status(200).json({ empresas: result });
   });
 });
+
+// //LISTAR EMPRESA POR ID
+ app.get("/users/listar/:id", (req, res) => {
+   const empresaId = req.params.id;
+   const query = `SELECT * FROM users WHERE idusuarios = ? `;
+
+   conn.query(query, [empresaId], (err, result) => {
+     if (err) {
+       console.error("Error ao listar empresas", err);
+       return res.status(500).json({ message: "Erro ao buscar empresa" });
+     }
+     res.status(200).json({ empresas: result });
+   });
+ });
 
 //LISTAR PERFIL DA EMPRESA
 app.get("/empresa/:id", authenticateToken, (req, res) => {
